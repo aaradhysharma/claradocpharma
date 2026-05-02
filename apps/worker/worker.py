@@ -21,7 +21,10 @@ AI_SCRIPT_ENABLED = os.getenv("AI_SCRIPT_ENABLED", "true").lower() in {"1", "tru
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
-DEFAULT_ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "")
+# Cloned from repo voice samples only (see voicesample doctor / voicesample pharma).
+AADI_DOCTOR_VOICE_ID = os.getenv("DOCTOR_ELEVENLABS_VOICE_ID", "VrD3EIr2SqyhWLakvrMt")
+BUNNY_PHARMACIST_VOICE_ID = os.getenv("PHARMACIST_ELEVENLABS_VOICE_ID", "fw4xyJhgrfgP0Y1OuCBb")
+ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
 PUBLIC_AUDIO_BASE_URL = os.getenv("PUBLIC_AUDIO_BASE_URL", "")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
@@ -132,11 +135,12 @@ Original reminder: {reminder.message}
 def generate_audio(reminder: Reminder, script_text: str) -> str:
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
     output_path = GENERATED_DIR / f"{reminder.id}.mp3"
-    voice_id = (
-        reminder.provider_voice.elevenlabs_voice_id
-        if reminder.provider_voice and reminder.provider_voice.elevenlabs_voice_id
-        else DEFAULT_ELEVENLABS_VOICE_ID
-    )
+    if reminder.provider_voice and reminder.provider_voice.elevenlabs_voice_id:
+        voice_id = reminder.provider_voice.elevenlabs_voice_id
+    elif reminder.provider.role == "pharmacist":
+        voice_id = BUNNY_PHARMACIST_VOICE_ID
+    else:
+        voice_id = AADI_DOCTOR_VOICE_ID
 
     if not ELEVENLABS_API_KEY or not voice_id:
         output_path.write_text(
@@ -151,7 +155,7 @@ def generate_audio(reminder: Reminder, script_text: str) -> str:
         headers={"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"},
         json={
             "text": script_text,
-            "model_id": "eleven_multilingual_v2",
+            "model_id": ELEVENLABS_MODEL,
             "voice_settings": {"stability": 0.55, "similarity_boost": 0.8},
         },
         timeout=60,

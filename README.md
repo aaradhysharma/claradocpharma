@@ -2,7 +2,7 @@
 
 > A production-shaped, end-to-end demo of an AI healthcare voice agent built for ChenMed-style operations. Real outbound phone calls, two-way conversation with Gemini, ElevenLabs cloned voices for individual doctors and pharmacists, Postgres/Redis/Worker pipeline, Kubernetes + ArgoCD GitOps, Terraform stubs for AWS, and a React control panel that lets non-technical staff click "Call patient" without ever touching a CLI.
 
-**Current version: `0.0.4`**
+**Current version: `0.0.5`**
 
 ---
 
@@ -214,7 +214,7 @@ curl -X POST http://localhost:8000/seed
 
 This creates:
 - Patients: Maria Johnson, Robert Wilson, Elena Garcia, Samuel Park, Priya Shah (all default to phone `+16232008850`)
-- Providers: Dr. Aadi (cloned voice), Dr. Maya Chen (premade ElevenLabs voice), Bunny Patel PharmD (cloned voice)
+- Providers: **Dr. Aadi** (doctor, voice cloned from `voicesample doctor/aadi doctor voice.ogg`) and **Bunny Patel, PharmD** (pharmacist, voice cloned from `voicesample pharma/bunny pharma voice note.ogg`) — no generic premade library voices
 - Care assignments wired so each provider has a roster
 
 ### Place your first live call
@@ -300,13 +300,12 @@ Generated MP3s are written to `/app/generated` inside the API container (mounted
 
 ## 7. ElevenLabs voice cloning
 
-The demo ships with two cloned voices and one premade voice:
+The demo ships with **only** these two cloned voices (defaults are baked into code; override with env vars if you re-clone):
 
-| Provider          | ElevenLabs voice id          | Source                                      |
-|-------------------|------------------------------|---------------------------------------------|
-| Dr. Aadi          | `VrD3EIr2SqyhWLakvrMt`       | Cloned from `voicesample doctor/aadi doctor voice.ogg` |
-| Bunny Patel PharmD| `fw4xyJhgrfgP0Y1OuCBb`       | Cloned from `voicesample pharma/bunny pharma voice note.ogg` |
-| Dr. Maya Chen     | `21m00Tcm4TlvDq8ikWAM`       | Premade Rachel voice (fallback)             |
+| Provider           | ElevenLabs voice id          | Source                                      |
+|--------------------|------------------------------|---------------------------------------------|
+| Dr. Aadi           | `VrD3EIr2SqyhWLakvrMt`       | Cloned from `voicesample doctor/aadi doctor voice.ogg` |
+| Bunny Patel, PharmD | `fw4xyJhgrfgP0Y1OuCBb`    | Cloned from `voicesample pharma/bunny pharma voice note.ogg` |
 
 ### Adding a new cloned voice
 
@@ -340,7 +339,7 @@ The response gives you a `voice_id`. Set it in `.env` as either `DOCTOR_ELEVENLA
 
 ### Voice mapping at call time
 
-When `/calls/outbound` runs, the worker looks up `provider_voice_id` from the request, falls back to the provider's default voice from DB, and only falls back to `ELEVENLABS_VOICE_ID` from env if neither exists. So as long as you've assigned voices via `/seed` or the API, every patient hears the right person.
+When `/calls/outbound` runs, the API resolves `provider_voice_id` from the request, then the provider's default voice from DB. If a voice row is missing, synthesis falls back by role: doctors use `DOCTOR_ELEVENLABS_VOICE_ID` or Aadi's clone id; pharmacists use `PHARMACIST_ELEVENLABS_VOICE_ID` or Bunny's clone id (no third generic voice).
 
 ---
 
@@ -354,7 +353,7 @@ The dashboard is intentionally minimalist - this is operations console UX, not a
 2. **Pipeline strip**: 4-stage live status of the current selected care relationship.
 3. **Patients card**: flat list of all patients in DB.
 4. **Care Relationships card**: every patient-provider pairing. Click "Use This Match" to set the active context.
-5. **Provider Directory** (the new v0.0.4 card):
+5. **Provider Directory**:
    - Each doctor/pharmacist is a collapsed row.
    - Click to expand -> see every patient on their roster, with phone numbers, plus a per-patient "Call" button that places an instant live AI call using that provider's cloned voice.
    - Includes an inline "Add patient" form that creates the patient + care assignment in one round-trip.
@@ -584,7 +583,6 @@ All env vars are documented in `.env.example`.
 | `GEMINI_MODEL`                   | API + Worker | `gemini-2.5-flash` recommended.                              |
 | `GEMINI_API_KEY`                 | API + Worker | Google AI Studio key. Used by both the worker (reminder scripts) and the API (live call replies). |
 | `ELEVENLABS_API_KEY`             | Voice        | TTS + voice cloning.                                         |
-| `ELEVENLABS_VOICE_ID`            | Voice        | Default fallback voice.                                      |
 | `ELEVENLABS_MODEL`               | Voice        | Default `eleven_turbo_v2_5` (low latency, sounds great).     |
 | `DOCTOR_ELEVENLABS_VOICE_ID`     | Voice        | Override doctor default voice id.                            |
 | `PHARMACIST_ELEVENLABS_VOICE_ID` | Voice        | Override pharmacist default voice id.                        |

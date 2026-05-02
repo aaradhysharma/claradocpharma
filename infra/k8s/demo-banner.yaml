@@ -7,12 +7,11 @@ metadata:
     app.kubernetes.io/name: clara-voiceops
     app.kubernetes.io/component: gitops-demo
 data:
-  BANNER_TEXT: "Clara VoiceOps v0.0.5 - live AI calls, ElevenLabs cloned voices, ArgoCD GitOps"
+  BANNER_TEXT: "Clara VoiceOps v0.0.5 — only Aadi + Bunny cloned voices (no generic premade fallback)"
   RELEASE_NOTES: |
-    0.0.4
+    0.0.5
     -----
-    - Provider directory: click a doctor or pharmacist to expand the patient roster.
-    - Per-patient one-tap call buttons that reuse the cloned provider voice.
-    - Add new patients on the fly without redeploying.
-    - This very ConfigMap is the GitOps demo artifact: edit it, push, watch ArgoCD sync.
+    - ElevenLabs: doctor uses cloned sample (Dr. Aadi), pharmacist uses cloned sample (Bunny).
+    - Removed premade generic ElevenLabs voice and extra demo doctor from seed data.
+    - Worker/API fallbacks map doctor vs pharmacist to those clone IDs only.
   GITOPS_NOTE: "Edit infra/k8s/demo-banner.yaml, commit to main, ArgoCD will auto-sync within 3 minutes."

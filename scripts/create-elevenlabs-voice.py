@@ -41,14 +41,16 @@ def multipart_body(fields: dict[str, str], files: dict[str, Path]) -> tuple[byte
     return b"".join(parts), boundary
 
 
-def save_voice_id(env_path: Path, voice_id: str) -> None:
+def save_voice_id(env_path: Path, key: str, voice_id: str) -> None:
+    """Update a single KEY= line in .env (e.g. PHARMACIST_ELEVENLABS_VOICE_ID)."""
+    prefix = f"{key}="
     lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
     for index, line in enumerate(lines):
-        if line.startswith("ELEVENLABS_VOICE_ID="):
-            lines[index] = f"ELEVENLABS_VOICE_ID={voice_id}"
+        if line.startswith(prefix):
+            lines[index] = f"{key}={voice_id}"
             break
     else:
-        lines.append(f"ELEVENLABS_VOICE_ID={voice_id}")
+        lines.append(f"{key}={voice_id}")
     env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -93,8 +95,9 @@ def main() -> None:
     if not voice_id:
         raise SystemExit(f"ElevenLabs response did not include voice_id: {data}")
 
-    save_voice_id(env_path, voice_id)
-    print(json.dumps({"status": "saved_to_env", "voice_id": voice_id}))
+    # This script uses the pharmacy sample; store under pharmacist key (Bunny clone).
+    save_voice_id(env_path, "PHARMACIST_ELEVENLABS_VOICE_ID", voice_id)
+    print(json.dumps({"status": "saved_to_env", "key": "PHARMACIST_ELEVENLABS_VOICE_ID", "voice_id": voice_id}))
 
 
 if __name__ == "__main__":

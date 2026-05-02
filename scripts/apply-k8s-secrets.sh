@@ -15,7 +15,6 @@ kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply
 kubectl create secret generic clara-secrets -n "${NAMESPACE}" \
   --from-literal=GEMINI_API_KEY="${GEMINI_API_KEY:-}" \
   --from-literal=ELEVENLABS_API_KEY="${ELEVENLABS_API_KEY:-}" \
-  --from-literal=ELEVENLABS_VOICE_ID="${ELEVENLABS_VOICE_ID:-}" \
   --from-literal=DOCTOR_ELEVENLABS_VOICE_ID="${DOCTOR_ELEVENLABS_VOICE_ID:-}" \
   --from-literal=PHARMACIST_ELEVENLABS_VOICE_ID="${PHARMACIST_ELEVENLABS_VOICE_ID:-}" \
   --from-literal=TWILIO_ACCOUNT_SID="${TWILIO_ACCOUNT_SID:-}" \

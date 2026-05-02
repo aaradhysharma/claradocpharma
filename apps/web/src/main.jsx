@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const VERSION = "0.0.4";
+const VERSION = "0.0.5";
 const DEFAULT_LIVE_CALL_NUMBER = "+16232008850";
 
 async function api(path, options = {}) {

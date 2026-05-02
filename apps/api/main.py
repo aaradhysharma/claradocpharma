@@ -16,9 +16,10 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, cre
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, joinedload, mapped_column, relationship, sessionmaker
 
 
-APP_VERSION = os.getenv("APP_VERSION", "0.0.4")
-PREMADE_DOCTOR_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+APP_VERSION = os.getenv("APP_VERSION", "0.0.5")
+# ElevenLabs voice IDs cloned from repo voice samples (no generic premade fallbacks).
 AADI_DOCTOR_VOICE_ID = "VrD3EIr2SqyhWLakvrMt"
+BUNNY_PHARMACIST_VOICE_ID = "fw4xyJhgrfgP0Y1OuCBb"
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg://clara:clara@localhost:5432/clara_voiceops",
@@ -28,7 +29,6 @@ GENERATED_DIR = Path(os.getenv("GENERATED_DIR", "/app/generated"))
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")
-DEFAULT_ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
@@ -453,33 +453,25 @@ def seed(db: Session = Depends(get_db)) -> dict[str, str]:
     samuel = get_or_create_patient(db, "Samuel Park", "+16232008850")
     priya = get_or_create_patient(db, "Priya Shah", "+16232008850")
     doctor_aadi = get_or_create_provider(db, "Dr. Aadi", "doctor", "primary care")
-    doctor_chen = get_or_create_provider(db, "Dr. Maya Chen", "doctor", "primary care")
     pharmacist = get_or_create_provider(db, "Bunny Patel, PharmD", "pharmacist", "pharmacy")
 
     aadi_voice = upsert_provider_voice(
         db,
         doctor_aadi,
-        "Dr. Aadi cloned voice",
+        "Dr. Aadi cloned voice (voice sample)",
         env_voice_id("DOCTOR_ELEVENLABS_VOICE_ID", default=AADI_DOCTOR_VOICE_ID),
-    )
-    chen_voice = upsert_provider_voice(
-        db,
-        doctor_chen,
-        "Dr. Maya Chen reminder voice",
-        PREMADE_DOCTOR_VOICE_ID,
     )
     pharmacist_voice = upsert_provider_voice(
         db,
         pharmacist,
-        "Bunny pharmacist cloned voice",
-        env_voice_id("PHARMACIST_ELEVENLABS_VOICE_ID", "ELEVENLABS_VOICE_ID"),
+        "Bunny pharmacist cloned voice (voice sample)",
+        env_voice_id("PHARMACIST_ELEVENLABS_VOICE_ID", default=BUNNY_PHARMACIST_VOICE_ID),
     )
     active_assignments = {
         upsert_assignment(db, maria, doctor_aadi, "primary_doctor").id,
         upsert_assignment(db, elena, doctor_aadi, "primary_doctor").id,
         upsert_assignment(db, samuel, doctor_aadi, "primary_doctor").id,
-        upsert_assignment(db, maria, doctor_chen, "consulting_doctor").id,
-        upsert_assignment(db, priya, doctor_chen, "primary_doctor").id,
+        upsert_assignment(db, priya, doctor_aadi, "primary_doctor").id,
         upsert_assignment(db, robert, pharmacist, "pharmacist").id,
         upsert_assignment(db, maria, pharmacist, "pharmacist").id,
         upsert_assignment(db, elena, pharmacist, "pharmacist").id,
@@ -492,10 +484,8 @@ def seed(db: Session = Depends(get_db)) -> dict[str, str]:
         "doctor_aadi_patient_id": maria.id,
         "pharmacist_patient_id": robert.id,
         "doctor_aadi_id": doctor_aadi.id,
-        "doctor_chen_id": doctor_chen.id,
         "pharmacist_id": pharmacist.id,
         "aadi_voice_id": aadi_voice.id,
-        "chen_voice_id": chen_voice.id,
         "pharmacist_voice_id": pharmacist_voice.id,
     }
 
@@ -807,11 +797,12 @@ def gemini_generate(system_prompt: str, history: list[ConversationTurn], next_us
 def synthesize_speech(conversation: Conversation, text_to_speak: str, turn_index: int) -> str | None:
     GENERATED_DIR.mkdir(parents=True, exist_ok=True)
     output_path = GENERATED_DIR / f"conv-{conversation.id}-{turn_index}.mp3"
-    voice_id = (
-        conversation.provider_voice.elevenlabs_voice_id
-        if conversation.provider_voice and conversation.provider_voice.elevenlabs_voice_id
-        else DEFAULT_ELEVENLABS_VOICE_ID
-    )
+    if conversation.provider_voice and conversation.provider_voice.elevenlabs_voice_id:
+        voice_id = conversation.provider_voice.elevenlabs_voice_id
+    elif conversation.provider.role == "pharmacist":
+        voice_id = env_voice_id("PHARMACIST_ELEVENLABS_VOICE_ID", default=BUNNY_PHARMACIST_VOICE_ID)
+    else:
+        voice_id = env_voice_id("DOCTOR_ELEVENLABS_VOICE_ID", default=AADI_DOCTOR_VOICE_ID)
     if not ELEVENLABS_API_KEY or not voice_id:
         output_path.write_text(text_to_speak, encoding="utf-8")
         return str(output_path)

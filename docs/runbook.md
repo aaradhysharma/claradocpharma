@@ -31,12 +31,12 @@ If `GEMINI_API_KEY` is set, the worker generates a short AI reminder script befo
 
 ## Provider Voice Mapping
 
-The demo database maps each patient to an assigned provider and each provider to a default ElevenLabs voice:
+The demo database maps each patient to an assigned provider and each provider to a default ElevenLabs voice cloned from the repo samples:
 
-- Maria Johnson -> Dr. Maya Chen -> `DOCTOR_ELEVENLABS_VOICE_ID`
-- Robert Wilson -> Bunny Patel, PharmD -> `PHARMACIST_ELEVENLABS_VOICE_ID`
+- Doctors (Dr. Aadi) -> `DOCTOR_ELEVENLABS_VOICE_ID` or baked-in Aadi clone id `VrD3EIr2SqyhWLakvrMt`
+- Pharmacists (Bunny Patel) -> `PHARMACIST_ELEVENLABS_VOICE_ID` or baked-in Bunny clone id `fw4xyJhgrfgP0Y1OuCBb`
 
-If `DOCTOR_ELEVENLABS_VOICE_ID` is empty, the seed endpoint uses a generic ElevenLabs premade voice for the doctor. If `PHARMACIST_ELEVENLABS_VOICE_ID` is empty, it falls back to `ELEVENLABS_VOICE_ID`, which is useful for your cloned pharmacy voice.
+There is no generic premade ElevenLabs library voice in the loop anymore — only those two clone IDs (overridable via env).
 
 To update a provider voice in a GitOps demo:
 
@@ -136,7 +136,7 @@ kubectl get events -n clara-voiceops --sort-by=.lastTimestamp
 Common causes:
 
 - Missing `ELEVENLABS_API_KEY`.
-- Wrong `ELEVENLABS_VOICE_ID`.
+- Wrong `DOCTOR_ELEVENLABS_VOICE_ID` / `PHARMACIST_ELEVENLABS_VOICE_ID` (or missing ElevenLabs API key).
 - Missing `GEMINI_API_KEY` if AI scripting is expected.
 - Redis service unavailable.
 - Postgres service unavailable.
