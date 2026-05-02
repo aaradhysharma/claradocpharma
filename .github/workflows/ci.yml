@@ -65,10 +65,17 @@ jobs:
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           PROJECT: clara-voiceops
+          SHA_TAG: ${{ github.sha }}
         run: |
           docker build -t "$REGISTRY/$PROJECT/api:${APP_VERSION}" apps/api
           docker build -t "$REGISTRY/$PROJECT/worker:${APP_VERSION}" apps/worker
           docker build -t "$REGISTRY/$PROJECT/web:${APP_VERSION}" apps/web
+          docker tag "$REGISTRY/$PROJECT/api:${APP_VERSION}" "$REGISTRY/$PROJECT/api:${SHA_TAG}"
+          docker tag "$REGISTRY/$PROJECT/worker:${APP_VERSION}" "$REGISTRY/$PROJECT/worker:${SHA_TAG}"
+          docker tag "$REGISTRY/$PROJECT/web:${APP_VERSION}" "$REGISTRY/$PROJECT/web:${SHA_TAG}"
           docker push "$REGISTRY/$PROJECT/api:${APP_VERSION}"
           docker push "$REGISTRY/$PROJECT/worker:${APP_VERSION}"
           docker push "$REGISTRY/$PROJECT/web:${APP_VERSION}"
+          docker push "$REGISTRY/$PROJECT/api:${SHA_TAG}"
+          docker push "$REGISTRY/$PROJECT/worker:${SHA_TAG}"
+          docker push "$REGISTRY/$PROJECT/web:${SHA_TAG}"

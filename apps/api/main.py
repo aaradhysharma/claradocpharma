@@ -361,8 +361,12 @@ def seed(db: Session = Depends(get_db)) -> dict[str, str]:
         "Pharmacist medication voice",
         env_voice_id("PHARMACIST_ELEVENLABS_VOICE_ID", "ELEVENLABS_VOICE_ID"),
     )
-    upsert_assignment(db, maria, doctor, "primary_doctor")
-    upsert_assignment(db, robert, pharmacist, "pharmacist")
+    active_assignments = {
+        upsert_assignment(db, maria, doctor, "primary_doctor").id,
+        upsert_assignment(db, robert, pharmacist, "pharmacist").id,
+    }
+    for assignment in db.scalars(select(CareAssignment)):
+        assignment.active = assignment.id in active_assignments
     db.commit()
     return {
         "status": "seeded",

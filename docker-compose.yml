@@ -29,6 +29,10 @@ services:
     build: ./apps/api
     ports:
       - "8000:8000"
+    networks:
+      default:
+        aliases:
+          - clara-api
     environment:
       APP_VERSION: ${APP_VERSION:-0.0.1}
       DATABASE_URL: postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops

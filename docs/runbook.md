@@ -47,6 +47,14 @@ To update a provider voice in a GitOps demo:
 
 ## Local Kubernetes And GitOps Demo
 
+One-command local setup:
+
+```bash
+bash scripts/deploy-local-gitops.sh
+```
+
+Manual steps are below if you want to narrate each DevOps layer.
+
 Create a local cluster:
 
 ```bash
@@ -56,27 +64,13 @@ kind create cluster --name clara
 Build images and load them into kind:
 
 ```bash
-docker build -t clara-api:0.0.1 apps/api
-docker build -t clara-worker:0.0.1 apps/worker
-docker build -t clara-web:0.0.1 apps/web
-kind load docker-image clara-api:0.0.1 --name clara
-kind load docker-image clara-worker:0.0.1 --name clara
-kind load docker-image clara-web:0.0.1 --name clara
+bash scripts/kind-build-load.sh
 ```
 
 Create the runtime secret from your local `.env`:
 
 ```bash
-kubectl create namespace clara-voiceops --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic clara-secrets -n clara-voiceops \
-  --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
-  --from-literal=ELEVENLABS_API_KEY="$ELEVENLABS_API_KEY" \
-  --from-literal=ELEVENLABS_VOICE_ID="$ELEVENLABS_VOICE_ID" \
-  --from-literal=TWILIO_ACCOUNT_SID="$TWILIO_ACCOUNT_SID" \
-  --from-literal=TWILIO_AUTH_TOKEN="$TWILIO_AUTH_TOKEN" \
-  --from-literal=TWILIO_FROM_NUMBER="$TWILIO_FROM_NUMBER" \
-  --from-literal=PUBLIC_AUDIO_BASE_URL="$PUBLIC_AUDIO_BASE_URL" \
-  --dry-run=client -o yaml | kubectl apply -f -
+bash scripts/apply-k8s-secrets.sh
 ```
 
 Apply the app manifests:
@@ -84,25 +78,52 @@ Apply the app manifests:
 ```bash
 kubectl apply -k infra/k8s
 kubectl get pods -n clara-voiceops
-kubectl port-forward svc/clara-web -n clara-voiceops 8080:80
 ```
 
 Install ArgoCD for the GitOps story:
 
 ```bash
 kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl get pods -n argocd
+bash scripts/install-argocd.sh
 kubectl port-forward svc/argocd-server -n argocd 8443:443
 ```
 
-Then update `infra/k8s/argocd-application.yaml` with your GitHub repo URL and apply it:
+Then apply the ArgoCD app:
 
 ```bash
 kubectl apply -f infra/k8s/argocd-application.yaml
 argocd app get clara-voiceops
 argocd app sync clara-voiceops
 ```
+
+The ArgoCD app points to `https://github.com/aaradhysharma/claradocpharma.git`. ArgoCD can only deploy changes after they are committed and pushed to that repo. For uncommitted local testing, use `kubectl apply -k infra/k8s`.
+
+Access the deployed app:
+
+```bash
+kubectl port-forward svc/clara-web -n clara-voiceops 8080:80
+kubectl port-forward svc/clara-api -n clara-voiceops 8000:8000
+```
+
+Open `http://localhost:8080`.
+
+## Monday Interview Demo Script
+
+1. Show the repo layout: `apps`, `infra/k8s`, `infra/terraform`, `.github/workflows`.
+2. Run `docker compose ps` to show local containers.
+3. Run `kubectl get pods -n clara-voiceops` to show Kubernetes workloads.
+4. Open ArgoCD and show the `clara-voiceops` app health/sync.
+5. Open the webapp, seed demo data, select a patient-provider relationship, and queue a reminder.
+6. Show the generated Gemini script and play the ElevenLabs MP3.
+7. Run `kubectl logs deployment/clara-worker -n clara-voiceops --tail=30`.
+8. Run `kubectl scale deployment clara-worker --replicas=2 -n clara-voiceops`.
+9. Explain that GitHub Actions publishes to ECR and ArgoCD deploys from Git.
+
+## ECR Publishing
+
+Do not publish to Docker Hub for this project by default. The AWS path uses ECR because it better matches the Systems Engineer JD.
+
+See `docs/ecr-cicd.md` for required GitHub secrets and image tagging.
 
 ## Troubleshoot Worker Failures
 
