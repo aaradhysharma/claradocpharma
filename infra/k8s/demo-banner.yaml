@@ -11,7 +11,7 @@ data:
   RELEASE_NOTES: |
     0.0.5
     -----
-    - ElevenLabs: doctor uses cloned sample (Dr. Aadi), pharmacist uses cloned sample (Bunny).
+    - ElevenLabs: doctor uses a cloned sample (Dr. Aadi), pharmacist uses cloned sample (Bunny).
     - Removed premade generic ElevenLabs voice and extra demo doctor from seed data.
     - Worker/API fallbacks map doctor vs pharmacist to those clone IDs only.
   GITOPS_NOTE: "Edit infra/k8s/demo-banner.yaml, commit to main, ArgoCD will auto-sync within 3 minutes."
