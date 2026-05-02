@@ -12,6 +12,8 @@ env:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -38,13 +40,16 @@ jobs:
       - name: Build web
         working-directory: apps/web
         run: |
-          npm install
+          npm ci
           npm run build
 
+  # Pushes Docker images to ECR via OIDC. Requires repo secrets AWS_ROLE_TO_ASSUME
+  # and ECR repos: clara-voiceops/{api,worker,web}. If the role ARN is unset, this
+  # job is skipped so CI stays green while AWS/GitHub OIDC is still being wired.
   build-images:
     needs: validate
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && secrets.AWS_ROLE_TO_ASSUME != ''
     permissions:
       id-token: write
       contents: read
@@ -55,6 +60,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: claradocpharma-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
