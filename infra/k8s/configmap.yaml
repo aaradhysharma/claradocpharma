@@ -4,7 +4,7 @@ metadata:
   name: clara-config
   namespace: clara-voiceops
 data:
-  APP_VERSION: "0.0.2"
+  APP_VERSION: "0.0.3"
   DATABASE_URL: "postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops"
   REDIS_URL: "redis://redis:6379/0"
   GENERATED_DIR: "/app/generated"

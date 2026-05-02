@@ -16,8 +16,9 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, cre
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, joinedload, mapped_column, relationship, sessionmaker
 
 
-APP_VERSION = os.getenv("APP_VERSION", "0.0.2")
+APP_VERSION = os.getenv("APP_VERSION", "0.0.3")
 PREMADE_DOCTOR_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
+AADI_DOCTOR_VOICE_ID = "VrD3EIr2SqyhWLakvrMt"
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg://clara:clara@localhost:5432/clara_voiceops",
@@ -446,25 +447,33 @@ def upsert_assignment(db: Session, patient: Patient, provider: Provider, relatio
 
 @app.post("/seed")
 def seed(db: Session = Depends(get_db)) -> dict[str, str]:
-    maria = get_or_create_patient(db, "Maria Johnson", "+15555550123")
-    robert = get_or_create_patient(db, "Robert Wilson", "+15555550124")
-    doctor = get_or_create_provider(db, "Dr. Maya Chen", "doctor", "primary care")
+    maria = get_or_create_patient(db, "Maria Johnson", "+16232008850")
+    robert = get_or_create_patient(db, "Robert Wilson", "+16232008850")
+    doctor_aadi = get_or_create_provider(db, "Dr. Aadi", "doctor", "primary care")
+    doctor_chen = get_or_create_provider(db, "Dr. Maya Chen", "doctor", "primary care")
     pharmacist = get_or_create_provider(db, "Bunny Patel, PharmD", "pharmacist", "pharmacy")
 
-    doctor_voice = upsert_provider_voice(
+    aadi_voice = upsert_provider_voice(
         db,
-        doctor,
-        "Doctor reminder voice",
-        env_voice_id("DOCTOR_ELEVENLABS_VOICE_ID", default=PREMADE_DOCTOR_VOICE_ID),
+        doctor_aadi,
+        "Dr. Aadi cloned voice",
+        env_voice_id("DOCTOR_ELEVENLABS_VOICE_ID", default=AADI_DOCTOR_VOICE_ID),
+    )
+    chen_voice = upsert_provider_voice(
+        db,
+        doctor_chen,
+        "Dr. Maya Chen reminder voice",
+        PREMADE_DOCTOR_VOICE_ID,
     )
     pharmacist_voice = upsert_provider_voice(
         db,
         pharmacist,
-        "Pharmacist medication voice",
+        "Bunny pharmacist cloned voice",
         env_voice_id("PHARMACIST_ELEVENLABS_VOICE_ID", "ELEVENLABS_VOICE_ID"),
     )
     active_assignments = {
-        upsert_assignment(db, maria, doctor, "primary_doctor").id,
+        upsert_assignment(db, maria, doctor_aadi, "primary_doctor").id,
+        upsert_assignment(db, maria, doctor_chen, "consulting_doctor").id,
         upsert_assignment(db, robert, pharmacist, "pharmacist").id,
     }
     for assignment in db.scalars(select(CareAssignment)):
@@ -472,11 +481,13 @@ def seed(db: Session = Depends(get_db)) -> dict[str, str]:
     db.commit()
     return {
         "status": "seeded",
-        "doctor_patient_id": maria.id,
+        "doctor_aadi_patient_id": maria.id,
         "pharmacist_patient_id": robert.id,
-        "doctor_id": doctor.id,
+        "doctor_aadi_id": doctor_aadi.id,
+        "doctor_chen_id": doctor_chen.id,
         "pharmacist_id": pharmacist.id,
-        "doctor_voice_id": doctor_voice.id,
+        "aadi_voice_id": aadi_voice.id,
+        "chen_voice_id": chen_voice.id,
         "pharmacist_voice_id": pharmacist_voice.id,
     }
 
