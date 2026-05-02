@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: clara
+      POSTGRES_PASSWORD: clara
+      POSTGRES_DB: clara_voiceops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clara -d clara_voiceops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./apps/api
+    ports:
+      - "8000:8000"
+    environment:
+      APP_VERSION: ${APP_VERSION:-0.0.1}
+      DATABASE_URL: postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops
+      REDIS_URL: redis://redis:6379/0
+      GENERATED_DIR: /app/generated
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      DOCTOR_ELEVENLABS_VOICE_ID: ${DOCTOR_ELEVENLABS_VOICE_ID:-}
+      PHARMACIST_ELEVENLABS_VOICE_ID: ${PHARMACIST_ELEVENLABS_VOICE_ID:-}
+    volumes:
+      - generated_audio:/app/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: ./apps/worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops
+      REDIS_URL: redis://redis:6379/0
+      AI_SCRIPT_ENABLED: ${AI_SCRIPT_ENABLED:-true}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      DOCTOR_ELEVENLABS_VOICE_ID: ${DOCTOR_ELEVENLABS_VOICE_ID:-}
+      PHARMACIST_ELEVENLABS_VOICE_ID: ${PHARMACIST_ELEVENLABS_VOICE_ID:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      PUBLIC_AUDIO_BASE_URL: ${PUBLIC_AUDIO_BASE_URL:-}
+      GENERATED_DIR: /app/generated
+    volumes:
+      - generated_audio:/app/generated
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build: ./apps/web
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  generated_audio:

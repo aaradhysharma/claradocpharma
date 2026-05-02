@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clara-api
+  namespace: clara-voiceops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: clara-api
+  template:
+    metadata:
+      labels:
+        app: clara-api
+    spec:
+      containers:
+        - name: api
+          image: clara-api:0.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: clara-config
+            - secretRef:
+                name: clara-secrets
+          volumeMounts:
+            - name: generated-audio
+              mountPath: /app/generated
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+      volumes:
+        - name: generated-audio
+          persistentVolumeClaim:
+            claimName: generated-audio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clara-api
+  namespace: clara-voiceops
+spec:
+  selector:
+    app: clara-api
+  ports:
+    - port: 8000
+      targetPort: 8000

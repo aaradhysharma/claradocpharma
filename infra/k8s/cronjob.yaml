@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: clara-scheduled-reminder-demo
+  namespace: clara-voiceops
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: trigger
+              image: curlimages/curl:8.17.0
+              command:
+                - sh
+                - -c
+                - |
+                  echo "CronJob placeholder: call /reminders after demo data exists."
+                  curl -fsS http://clara-api:8000/health

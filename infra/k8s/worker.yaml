@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clara-worker
+  namespace: clara-voiceops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clara-worker
+  template:
+    metadata:
+      labels:
+        app: clara-worker
+    spec:
+      containers:
+        - name: worker
+          image: clara-worker:0.0.1
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: clara-config
+            - secretRef:
+                name: clara-secrets
+          volumeMounts:
+            - name: generated-audio
+              mountPath: /app/generated
+      volumes:
+        - name: generated-audio
+          persistentVolumeClaim:
+            claimName: generated-audio

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clara-config
+  namespace: clara-voiceops
+data:
+  APP_VERSION: "0.0.1"
+  DATABASE_URL: "postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops"
+  REDIS_URL: "redis://redis:6379/0"
+  GENERATED_DIR: "/app/generated"
+  AI_SCRIPT_ENABLED: "true"
+  GEMINI_MODEL: "gemini-2.5-flash"
+  DOCTOR_ELEVENLABS_VOICE_ID: ""
+  PHARMACIST_ELEVENLABS_VOICE_ID: ""

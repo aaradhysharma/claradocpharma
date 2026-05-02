@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  APP_VERSION: 0.0.1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate API syntax
+        working-directory: apps/api
+        run: |
+          python -m pip install -r requirements.txt
+          python -m py_compile main.py
+
+      - name: Validate worker syntax
+        working-directory: apps/worker
+        run: |
+          python -m pip install -r requirements.txt
+          python -m py_compile worker.py
+
+      - name: Build web
+        working-directory: apps/web
+        run: |
+          npm install
+          npm run build
+
+  build-images:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          PROJECT: clara-voiceops
+        run: |
+          docker build -t "$REGISTRY/$PROJECT/api:${APP_VERSION}" apps/api
+          docker build -t "$REGISTRY/$PROJECT/worker:${APP_VERSION}" apps/worker
+          docker build -t "$REGISTRY/$PROJECT/web:${APP_VERSION}" apps/web
+          docker push "$REGISTRY/$PROJECT/api:${APP_VERSION}"
+          docker push "$REGISTRY/$PROJECT/worker:${APP_VERSION}"
+          docker push "$REGISTRY/$PROJECT/web:${APP_VERSION}"
