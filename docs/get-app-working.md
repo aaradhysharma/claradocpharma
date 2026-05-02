@@ -10,6 +10,20 @@ Use 3 terminals so long-running commands do not block each other:
 - **Terminal B**: cloudflared tunnel
 - **Terminal C**: quick checks / curl / troubleshooting
 
+If you want one-command startup for the local stack, run:
+
+```bash
+cd /mnt/c/project2026/claradocpharma
+bash scripts/start-after-reboot.sh
+```
+
+Optional: auto-start tunnel in same terminal:
+
+```bash
+cd /mnt/c/project2026/claradocpharma
+START_TUNNEL=true bash scripts/start-after-reboot.sh
+```
+
 ## 1) Start Docker Desktop first (from Windows)
 
 1. Launch Docker Desktop from Start Menu.
@@ -157,6 +171,13 @@ If tunnel URL changed, update `.env` and run:
 ```bash
 cd /mnt/c/project2026/claradocpharma
 docker compose up -d --force-recreate api
+```
+
+You can replace the manual Terminal A + Terminal C steps with:
+
+```bash
+cd /mnt/c/project2026/claradocpharma
+bash scripts/start-after-reboot.sh
 ```
 
 ## WSL path sanity check (run once)
