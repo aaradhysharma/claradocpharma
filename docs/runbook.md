@@ -1,7 +1,7 @@
 # Clara VoiceOps Runbook
 
 For the clean local Kubernetes demo with Argo CD, port cleanup, browser URLs, and presenter talking points, use `docs/argocd-demo.md`.
-For reboot/restart commands on your Windows machine (including cloudflared recovery), use `docs/get-app-working.md`.
+For reboot/restart commands on your WSL setup (including cloudflared recovery), use `docs/get-app-working.md`.
 
 ## Check Service Health
 
