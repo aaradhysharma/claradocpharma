@@ -6,7 +6,6 @@ on:
   pull_request:
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
   APP_VERSION: 0.0.1
 
 jobs:
@@ -43,45 +42,37 @@ jobs:
           npm ci
           npm run build
 
-  # Pushes Docker images to ECR via OIDC. Requires repo secrets AWS_ROLE_TO_ASSUME
-  # and ECR repos: clara-voiceops/{api,worker,web}. If the role ARN is unset, this
-  # job is skipped so CI stays green while AWS/GitHub OIDC is still being wired.
+  # Pushes to Docker Hub. Create repos clara-api, clara-worker, clara-web under your
+  # account (or rely on auto-create on first push). Set DOCKERHUB_USERNAME +
+  # DOCKERHUB_TOKEN (access token) in repo secrets. Must match infra/k8s/kustomization.yaml images.
   build-images:
     needs: validate
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && secrets.AWS_ROLE_TO_ASSUME != ''
+    if: github.event_name == 'push' && secrets.DOCKERHUB_TOKEN != '' && secrets.DOCKERHUB_USERNAME != ''
     permissions:
-      id-token: write
       contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
+      - uses: docker/login-action@v3
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: claradocpharma-${{ github.run_id }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push images
         env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          PROJECT: clara-voiceops
+          NS: ${{ secrets.DOCKERHUB_USERNAME }}
           SHA_TAG: ${{ github.sha }}
         run: |
-          docker build -t "$REGISTRY/$PROJECT/api:${APP_VERSION}" apps/api
-          docker build -t "$REGISTRY/$PROJECT/worker:${APP_VERSION}" apps/worker
-          docker build -t "$REGISTRY/$PROJECT/web:${APP_VERSION}" apps/web
-          docker tag "$REGISTRY/$PROJECT/api:${APP_VERSION}" "$REGISTRY/$PROJECT/api:${SHA_TAG}"
-          docker tag "$REGISTRY/$PROJECT/worker:${APP_VERSION}" "$REGISTRY/$PROJECT/worker:${SHA_TAG}"
-          docker tag "$REGISTRY/$PROJECT/web:${APP_VERSION}" "$REGISTRY/$PROJECT/web:${SHA_TAG}"
-          docker push "$REGISTRY/$PROJECT/api:${APP_VERSION}"
-          docker push "$REGISTRY/$PROJECT/worker:${APP_VERSION}"
-          docker push "$REGISTRY/$PROJECT/web:${APP_VERSION}"
-          docker push "$REGISTRY/$PROJECT/api:${SHA_TAG}"
-          docker push "$REGISTRY/$PROJECT/worker:${SHA_TAG}"
-          docker push "$REGISTRY/$PROJECT/web:${SHA_TAG}"
+          docker build -t "$NS/clara-api:${APP_VERSION}" apps/api
+          docker build -t "$NS/clara-worker:${APP_VERSION}" apps/worker
+          docker build -t "$NS/clara-web:${APP_VERSION}" apps/web
+          docker tag "$NS/clara-api:${APP_VERSION}" "$NS/clara-api:${SHA_TAG}"
+          docker tag "$NS/clara-worker:${APP_VERSION}" "$NS/clara-worker:${SHA_TAG}"
+          docker tag "$NS/clara-web:${APP_VERSION}" "$NS/clara-web:${SHA_TAG}"
+          docker push "$NS/clara-api:${APP_VERSION}"
+          docker push "$NS/clara-worker:${APP_VERSION}"
+          docker push "$NS/clara-web:${APP_VERSION}"
+          docker push "$NS/clara-api:${SHA_TAG}"
+          docker push "$NS/clara-worker:${SHA_TAG}"
+          docker push "$NS/clara-web:${SHA_TAG}"

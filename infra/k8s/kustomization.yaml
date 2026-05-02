@@ -11,3 +11,15 @@ resources:
   - worker.yaml
   - web.yaml
   - cronjob.yaml
+# Must match GitHub Actions secret DOCKERHUB_USERNAME (Docker Hub namespace).
+# Swap aaradhysharma for your Docker Hub user if different.
+images:
+  - name: clara-api
+    newName: docker.io/aaradhysharma/clara-api
+    newTag: "0.0.1"
+  - name: clara-worker
+    newName: docker.io/aaradhysharma/clara-worker
+    newTag: "0.0.1"
+  - name: clara-web
+    newName: docker.io/aaradhysharma/clara-web
+    newTag: "0.0.1"

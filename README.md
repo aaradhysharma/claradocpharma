@@ -562,7 +562,7 @@ This is intentionally a stub - in real life you'd swap EC2 for EKS or App Runner
 `.github/workflows/` contains a build/test/push pipeline that:
 
 1. Lints + unit tests the API and worker on every PR.
-2. Builds Docker images and pushes them to GHCR (or ECR) on merge to `main`.
+2. Builds Docker images and pushes them to Docker Hub on merge to `main` (when `DOCKERHUB_*` secrets are set).
 3. Updates the image tag in `infra/k8s/api.yaml` (or via Kustomize image override).
 4. Pushes that change back, which triggers ArgoCD to roll out the new version.
 

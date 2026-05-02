@@ -125,7 +125,7 @@ Open `http://localhost:8080`.
 
 Do not publish to Docker Hub for this project by default. The AWS path uses ECR because it better matches the Systems Engineer JD.
 
-See `docs/ecr-cicd.md` for required GitHub secrets and image tagging.
+See `docs/dockerhub-cicd.md` for required GitHub secrets and image tagging.
 
 ## Troubleshoot Worker Failures
 
