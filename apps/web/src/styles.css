@@ -129,14 +129,78 @@ audio {
   width: 100%;
 }
 
-textarea {
+textarea,
+input[type="tel"],
+input[type="text"] {
   border: 1px solid #d6ded8;
   border-radius: 14px;
   box-sizing: border-box;
   font: inherit;
-  min-height: 140px;
   padding: 12px;
   width: 100%;
+}
+
+textarea {
+  min-height: 140px;
+}
+
+button.primary {
+  background: linear-gradient(135deg, #1f6334, #29a85a);
+  box-shadow: 0 12px 30px rgba(38, 120, 63, 0.35);
+}
+
+.live-call label {
+  display: grid;
+  font-weight: 600;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.live-call label textarea {
+  min-height: 70px;
+}
+
+.live-call .hint {
+  color: #5d6b61;
+  margin: 4px 0 12px;
+}
+
+.live-call .live-meta {
+  background: #f4f8f5;
+  border-radius: 12px;
+  display: grid;
+  font-size: 0.9rem;
+  gap: 4px;
+  margin: 8px 0 16px;
+  padding: 12px;
+}
+
+.transcript {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.turn {
+  border-radius: 12px;
+  line-height: 1.45;
+  padding: 8px 12px;
+}
+
+.turn-assistant {
+  background: #eaf4ed;
+  border-left: 3px solid #26783f;
+}
+
+.turn-user {
+  background: #f4f6fb;
+  border-left: 3px solid #4a72bf;
+}
+
+.error {
+  color: #b13a3a;
 }
 
 .status {

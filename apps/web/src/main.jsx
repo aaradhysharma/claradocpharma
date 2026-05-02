@@ -3,7 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const VERSION = "0.0.1";
+const VERSION = "0.0.2";
+const DEFAULT_LIVE_CALL_NUMBER = "+16232008850";
 
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -24,6 +25,12 @@ function App() {
   const [relationships, setRelationships] = useState([]);
   const [reminders, setReminders] = useState([]);
   const [attempts, setAttempts] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState("");
+  const [livePhoneNumber, setLivePhoneNumber] = useState(DEFAULT_LIVE_CALL_NUMBER);
+  const [callPurpose, setCallPurpose] = useState(
+    "Friendly check-in to confirm the patient is taking their medication and feeling well.",
+  );
   const [status, setStatus] = useState("Ready");
   const [message, setMessage] = useState("Hello Maria, this is Clara reminding you to take your blood pressure medication today.");
   const [selectedRelationshipId, setSelectedRelationshipId] = useState("");
@@ -46,6 +53,7 @@ function App() {
       nextRelationships,
       nextReminders,
       nextAttempts,
+      nextConversations,
     ] = await Promise.all([
       api("/patients"),
       api("/providers"),
@@ -54,6 +62,7 @@ function App() {
       api("/care-relationships"),
       api("/reminders"),
       api("/call-attempts"),
+      api("/conversations"),
     ]);
     setPatients(nextPatients);
     setProviders(nextProviders);
@@ -62,6 +71,7 @@ function App() {
     setRelationships(nextRelationships);
     setReminders(nextReminders);
     setAttempts(nextAttempts);
+    setConversations(nextConversations);
     if (!selectedRelationshipId && nextRelationships.length > 0) {
       setSelectedRelationshipId(nextRelationships[0].id);
     }
@@ -70,6 +80,23 @@ function App() {
   useEffect(() => {
     refresh().catch((error) => setStatus(`API not ready: ${error.message}`));
   }, []);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    const interval = setInterval(() => {
+      api("/conversations")
+        .then((rows) => {
+          setConversations(rows);
+          const active = rows.find((row) => row.id === activeConversationId);
+          if (active && ["completed", "failed", "busy", "no-answer", "canceled"].includes(active.status)) {
+            setStatus(`Live call ${active.status} (${active.turn_count} turns).`);
+            setActiveConversationId("");
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activeConversationId]);
 
   async function seed() {
     setStatus("Seeding demo patient, providers, and voices...");
@@ -98,6 +125,40 @@ function App() {
     setStatus("Reminder queued. Refresh in a few seconds to see the AI script and audio.");
   }
 
+  async function startLiveCall() {
+    if (!selectedRelationship) {
+      setStatus("Seed demo data first, then choose a care match.");
+      return;
+    }
+    if (!livePhoneNumber.trim()) {
+      setStatus("Enter a phone number to call.");
+      return;
+    }
+    setStatus(`Placing live AI call to ${livePhoneNumber}...`);
+    try {
+      const conversation = await api("/calls/outbound", {
+        method: "POST",
+        body: JSON.stringify({
+          relationship_id: selectedRelationship.id,
+          patient_id: selectedRelationship.patient_id,
+          provider_id: selectedRelationship.provider_id,
+          provider_voice_id: selectedRelationship.provider_voice_id,
+          to_number: livePhoneNumber,
+          purpose: callPurpose,
+        }),
+      });
+      setActiveConversationId(conversation.id);
+      setStatus(
+        `Live call started (sid ${conversation.twilio_call_sid || "n/a"}). Pick up the phone and talk to ${selectedRelationship.provider_name}'s AI voice.`,
+      );
+      await refresh();
+    } catch (error) {
+      setStatus(`Live call failed: ${error.message}`);
+    }
+  }
+
+  const activeConversation = conversations.find((conv) => conv.id === activeConversationId) || conversations[0];
+
   return (
     <main>
       <section className="hero">
@@ -112,6 +173,7 @@ function App() {
         <div className="actions">
           <button onClick={seed}>Seed Demo Data</button>
           <button onClick={queueReminder}>Queue Reminder Call</button>
+          <button className="primary" onClick={startLiveCall}>Start Live AI Call</button>
           <button onClick={refresh}>Refresh Status</button>
         </div>
       </section>
@@ -172,6 +234,62 @@ function App() {
         <div className="card">
           <h2>Reminder Message</h2>
           <textarea value={message} onChange={(event) => setMessage(event.target.value)} />
+        </div>
+
+        <div className="card live-call">
+          <h2>Talk to AI (Live Call)</h2>
+          <p className="hint">
+            Places an outbound call from your Twilio number using the selected provider voice.
+            The patient picks up and has a real two-way conversation with Gemini + ElevenLabs.
+          </p>
+          <label>
+            Phone number to call
+            <input
+              type="tel"
+              value={livePhoneNumber}
+              onChange={(event) => setLivePhoneNumber(event.target.value)}
+              placeholder="+16232008850"
+            />
+          </label>
+          <label>
+            Purpose / context
+            <textarea value={callPurpose} onChange={(event) => setCallPurpose(event.target.value)} />
+          </label>
+          <div className="live-meta">
+            <span><strong>Provider:</strong> {selectedRelationship?.provider_name || "—"}</span>
+            <span><strong>Voice:</strong> {selectedRelationship?.voice_label || "—"}</span>
+            <span><strong>11Labs ID:</strong> {selectedRelationship?.elevenlabs_voice_id || "—"}</span>
+          </div>
+          <button className="primary" onClick={startLiveCall}>Call {livePhoneNumber || "patient"}</button>
+        </div>
+
+        <div className="card">
+          <h2>Live Conversation</h2>
+          {activeConversation ? (
+            <>
+              <article>
+                <strong>{activeConversation.status.toUpperCase()}</strong>
+                <span>
+                  {activeConversation.provider_name} → {activeConversation.to_number}
+                </span>
+                <small>
+                  {activeConversation.turn_count} turns · sid {activeConversation.twilio_call_sid || "pending"}
+                </small>
+              </article>
+              <div className="transcript">
+                {(activeConversation.turns || []).map((turn) => (
+                  <div key={turn.id} className={`turn turn-${turn.role}`}>
+                    <strong>{turn.role === "assistant" ? "AI" : "Patient"}:</strong> {turn.content}
+                  </div>
+                ))}
+              </div>
+              {activeConversation.error_message && (
+                <p className="error">{activeConversation.error_message}</p>
+              )}
+            </>
+          ) : (
+            <p className="hint">No live calls yet. Start one above.</p>
+          )}
         </div>
 
         <div className="card">

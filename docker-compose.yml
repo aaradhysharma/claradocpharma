@@ -34,13 +34,23 @@ services:
         aliases:
           - clara-api
     environment:
-      APP_VERSION: ${APP_VERSION:-0.0.1}
+      APP_VERSION: ${APP_VERSION:-0.0.2}
       DATABASE_URL: postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops
       REDIS_URL: redis://redis:6379/0
       GENERATED_DIR: /app/generated
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
       ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      ELEVENLABS_MODEL: ${ELEVENLABS_MODEL:-eleven_turbo_v2_5}
       DOCTOR_ELEVENLABS_VOICE_ID: ${DOCTOR_ELEVENLABS_VOICE_ID:-}
       PHARMACIST_ELEVENLABS_VOICE_ID: ${PHARMACIST_ELEVENLABS_VOICE_ID:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-}
+      PUBLIC_AUDIO_BASE_URL: ${PUBLIC_AUDIO_BASE_URL:-}
+      MAX_CONVERSATION_TURNS: ${MAX_CONVERSATION_TURNS:-12}
     volumes:
       - generated_audio:/app/generated
     depends_on:

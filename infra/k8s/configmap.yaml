@@ -4,11 +4,15 @@ metadata:
   name: clara-config
   namespace: clara-voiceops
 data:
-  APP_VERSION: "0.0.1"
+  APP_VERSION: "0.0.2"
   DATABASE_URL: "postgresql+psycopg://clara:clara@postgres:5432/clara_voiceops"
   REDIS_URL: "redis://redis:6379/0"
   GENERATED_DIR: "/app/generated"
   AI_SCRIPT_ENABLED: "true"
   GEMINI_MODEL: "gemini-2.5-flash"
+  ELEVENLABS_MODEL: "eleven_turbo_v2_5"
   DOCTOR_ELEVENLABS_VOICE_ID: ""
   PHARMACIST_ELEVENLABS_VOICE_ID: ""
+  PUBLIC_API_BASE_URL: ""
+  PUBLIC_AUDIO_BASE_URL: ""
+  MAX_CONVERSATION_TURNS: "12"
