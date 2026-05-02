@@ -522,7 +522,15 @@ def create_provider(payload: ProviderCreate, db: Session = Depends(get_db)) -> P
 
 @app.get("/providers", response_model=list[ProviderOut])
 def list_providers(db: Session = Depends(get_db)) -> list[Provider]:
-    return list(db.scalars(select(Provider).order_by(Provider.created_at.desc())))
+    return list(
+        db.scalars(
+            select(Provider)
+            .join(CareAssignment)
+            .where(CareAssignment.active.is_(True))
+            .distinct()
+            .order_by(Provider.created_at.desc())
+        )
+    )
 
 
 @app.post("/provider-voices", response_model=ProviderVoiceOut)
