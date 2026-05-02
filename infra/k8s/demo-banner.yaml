@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: clara-voiceops
     app.kubernetes.io/component: gitops-demo
 data:
-  BANNER_TEXT: "Clara VoiceOps v0.0.4 - live AI calls, ElevenLabs cloned voices, ArgoCD GitOps"
+  BANNER_TEXT: "Clara VoiceOps v0.0.5 - live AI calls, ElevenLabs cloned voices, ArgoCD GitOps"
   RELEASE_NOTES: |
     0.0.4
     -----
