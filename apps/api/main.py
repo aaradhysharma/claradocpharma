@@ -478,6 +478,13 @@ def seed(db: Session = Depends(get_db)) -> dict[str, str]:
     }
     for assignment in db.scalars(select(CareAssignment)):
         assignment.active = assignment.id in active_assignments
+
+    # Legacy demo: deactivate care assignments for removed premade-voice doctor so old DBs stay consistent.
+    legacy_chen = db.scalar(select(Provider).where(Provider.full_name == "Dr. Maya Chen"))
+    if legacy_chen:
+        for stale in db.scalars(select(CareAssignment).where(CareAssignment.provider_id == legacy_chen.id)):
+            stale.active = False
+
     db.commit()
     return {
         "status": "seeded",
