@@ -25,7 +25,7 @@ If these secrets are unset, the **`build-images`** job is skipped and **`validat
 - `docker.io/<DOCKERHUB_USERNAME>/clara-worker`
 - `docker.io/<DOCKERHUB_USERNAME>/clara-web`
 
-Edit `newName` in that file if your Docker Hub namespace is not **`aaradhysharma`**.
+Edit `newName` in that file if your Docker Hub namespace differs (e.g. **`aadisharma`**).
 
 Apply with Kustomize so replacements are applied:
 
