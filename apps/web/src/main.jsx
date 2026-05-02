@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const VERSION = "0.0.3";
+const VERSION = "0.0.4";
 const DEFAULT_LIVE_CALL_NUMBER = "+16232008850";
 
 async function api(path, options = {}) {
@@ -31,6 +31,9 @@ function App() {
   const [callPurpose, setCallPurpose] = useState(
     "Friendly check-in to confirm the patient is taking their medication and feeling well.",
   );
+  const [expandedProviderId, setExpandedProviderId] = useState("");
+  const [providerRosters, setProviderRosters] = useState({});
+  const [newPatientDrafts, setNewPatientDrafts] = useState({});
   const [status, setStatus] = useState("Ready");
   const [message, setMessage] = useState("Hello Maria, this is Clara reminding you to take your blood pressure medication today.");
   const [selectedRelationshipId, setSelectedRelationshipId] = useState("");
@@ -157,6 +160,80 @@ function App() {
     }
   }
 
+  async function toggleProvider(providerId) {
+    const next = expandedProviderId === providerId ? "" : providerId;
+    setExpandedProviderId(next);
+    if (next && !providerRosters[providerId]) {
+      try {
+        const roster = await api(`/providers/${providerId}/patients`);
+        setProviderRosters((prev) => ({ ...prev, [providerId]: roster }));
+      } catch (error) {
+        setStatus(`Could not load roster: ${error.message}`);
+      }
+    }
+  }
+
+  async function callPatientFromRoster(relationship) {
+    setStatus(`Calling ${relationship.patient_name} at ${relationship.patient_phone}...`);
+    try {
+      const conversation = await api("/calls/outbound", {
+        method: "POST",
+        body: JSON.stringify({
+          relationship_id: relationship.id,
+          patient_id: relationship.patient_id,
+          provider_id: relationship.provider_id,
+          provider_voice_id: relationship.provider_voice_id,
+          to_number: relationship.patient_phone,
+          purpose: callPurpose,
+        }),
+      });
+      setActiveConversationId(conversation.id);
+      setSelectedRelationshipId(relationship.id);
+      setStatus(`Live call started to ${relationship.patient_name}. Pick up the phone.`);
+      await refresh();
+    } catch (error) {
+      setStatus(`Call failed: ${error.message}`);
+    }
+  }
+
+  async function addPatientToProvider(providerId) {
+    const draft = newPatientDrafts[providerId] || {};
+    const name = (draft.name || "").trim();
+    const phone = (draft.phone || "").trim();
+    if (!name || !phone) {
+      setStatus("Enter both name and phone.");
+      return;
+    }
+    setStatus(`Adding ${name} to provider roster...`);
+    try {
+      const created = await api(`/providers/${providerId}/patients`, {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: name,
+          phone_number: phone,
+          provider_id: providerId,
+          relationship_type: draft.relationship || "primary",
+        }),
+      });
+      setProviderRosters((prev) => ({
+        ...prev,
+        [providerId]: [created, ...(prev[providerId] || [])],
+      }));
+      setNewPatientDrafts((prev) => ({ ...prev, [providerId]: { name: "", phone: "", relationship: "primary" } }));
+      setStatus(`Added ${created.patient_name}. Refreshing care list...`);
+      await refresh();
+    } catch (error) {
+      setStatus(`Add patient failed: ${error.message}`);
+    }
+  }
+
+  function updateDraft(providerId, field, value) {
+    setNewPatientDrafts((prev) => ({
+      ...prev,
+      [providerId]: { ...(prev[providerId] || {}), [field]: value },
+    }));
+  }
+
   const activeConversation = conversations.find((conv) => conv.id === activeConversationId) || conversations[0];
 
   return (
@@ -220,15 +297,67 @@ function App() {
           ))}
         </div>
 
-        <div className="card">
-          <h2>Doctor / Pharmacist Voices</h2>
-          {providers.map((provider) => (
-            <article key={provider.id}>
-              <strong>{provider.full_name}</strong>
-              <span>{provider.role} - {provider.department}</span>
-              <small>{voices.find((voice) => voice.provider_id === provider.id)?.label || "No voice mapped"}</small>
-            </article>
-          ))}
+        <div className="card provider-directory">
+          <h2>Provider Directory</h2>
+          <p className="hint">
+            Click a doctor or pharmacist to see who's on their roster. Add new patients on the fly and call any of them with one tap using that provider's cloned voice.
+          </p>
+          {providers.map((provider) => {
+            const voice = voices.find((v) => v.provider_id === provider.id);
+            const expanded = expandedProviderId === provider.id;
+            const roster = providerRosters[provider.id];
+            const draft = newPatientDrafts[provider.id] || { name: "", phone: DEFAULT_LIVE_CALL_NUMBER, relationship: "primary" };
+            return (
+              <div key={provider.id} className={`provider-row ${expanded ? "expanded" : ""}`}>
+                <button className="provider-header" onClick={() => toggleProvider(provider.id)}>
+                  <div>
+                    <strong>{provider.full_name}</strong>
+                    <span>{provider.role} - {provider.department}</span>
+                    <small>{voice?.label || "No voice mapped"}</small>
+                  </div>
+                  <span className="chev">{expanded ? "-" : "+"}</span>
+                </button>
+                {expanded && (
+                  <div className="provider-body">
+                    {!roster && <p className="hint">Loading roster...</p>}
+                    {roster && roster.length === 0 && <p className="hint">No patients yet. Add one below.</p>}
+                    {roster && roster.map((rel) => (
+                      <div key={rel.id} className="patient-row">
+                        <div>
+                          <strong>{rel.patient_name}</strong>
+                          <span>{rel.relationship_type}</span>
+                          <small>{rel.patient_phone}</small>
+                        </div>
+                        <button className="primary small" onClick={() => callPatientFromRoster(rel)}>Call</button>
+                      </div>
+                    ))}
+                    <div className="add-patient">
+                      <strong>Add patient</strong>
+                      <input
+                        type="text"
+                        placeholder="Patient name"
+                        value={draft.name || ""}
+                        onChange={(e) => updateDraft(provider.id, "name", e.target.value)}
+                      />
+                      <input
+                        type="tel"
+                        placeholder="+1 phone number"
+                        value={draft.phone || ""}
+                        onChange={(e) => updateDraft(provider.id, "phone", e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Relationship (e.g. primary, follow_up)"
+                        value={draft.relationship || ""}
+                        onChange={(e) => updateDraft(provider.id, "relationship", e.target.value)}
+                      />
+                      <button onClick={() => addPatientToProvider(provider.id)}>+ Add to roster</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="card">

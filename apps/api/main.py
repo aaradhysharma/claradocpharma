@@ -16,7 +16,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, cre
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, joinedload, mapped_column, relationship, sessionmaker
 
 
-APP_VERSION = os.getenv("APP_VERSION", "0.0.3")
+APP_VERSION = os.getenv("APP_VERSION", "0.0.4")
 PREMADE_DOCTOR_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"
 AADI_DOCTOR_VOICE_ID = "VrD3EIr2SqyhWLakvrMt"
 DATABASE_URL = os.getenv(
@@ -449,6 +449,9 @@ def upsert_assignment(db: Session, patient: Patient, provider: Provider, relatio
 def seed(db: Session = Depends(get_db)) -> dict[str, str]:
     maria = get_or_create_patient(db, "Maria Johnson", "+16232008850")
     robert = get_or_create_patient(db, "Robert Wilson", "+16232008850")
+    elena = get_or_create_patient(db, "Elena Garcia", "+16232008850")
+    samuel = get_or_create_patient(db, "Samuel Park", "+16232008850")
+    priya = get_or_create_patient(db, "Priya Shah", "+16232008850")
     doctor_aadi = get_or_create_provider(db, "Dr. Aadi", "doctor", "primary care")
     doctor_chen = get_or_create_provider(db, "Dr. Maya Chen", "doctor", "primary care")
     pharmacist = get_or_create_provider(db, "Bunny Patel, PharmD", "pharmacist", "pharmacy")
@@ -473,8 +476,13 @@ def seed(db: Session = Depends(get_db)) -> dict[str, str]:
     )
     active_assignments = {
         upsert_assignment(db, maria, doctor_aadi, "primary_doctor").id,
+        upsert_assignment(db, elena, doctor_aadi, "primary_doctor").id,
+        upsert_assignment(db, samuel, doctor_aadi, "primary_doctor").id,
         upsert_assignment(db, maria, doctor_chen, "consulting_doctor").id,
+        upsert_assignment(db, priya, doctor_chen, "primary_doctor").id,
         upsert_assignment(db, robert, pharmacist, "pharmacist").id,
+        upsert_assignment(db, maria, pharmacist, "pharmacist").id,
+        upsert_assignment(db, elena, pharmacist, "pharmacist").id,
     }
     for assignment in db.scalars(select(CareAssignment)):
         assignment.active = assignment.id in active_assignments
@@ -552,6 +560,89 @@ def create_assignment(payload: CareAssignmentCreate, db: Session = Depends(get_d
 @app.get("/assignments", response_model=list[CareAssignmentOut])
 def list_assignments(db: Session = Depends(get_db)) -> list[CareAssignment]:
     return list(db.scalars(select(CareAssignment).order_by(CareAssignment.created_at.desc())))
+
+
+class QuickPatientCreate(BaseModel):
+    full_name: str
+    phone_number: str
+    provider_id: str
+    relationship_type: str = "primary"
+    preferred_language: str = "en"
+
+
+@app.post("/providers/{provider_id}/patients", response_model=CareRelationshipOut)
+def add_patient_to_provider(provider_id: str, payload: QuickPatientCreate, db: Session = Depends(get_db)) -> CareRelationshipOut:
+    provider = db.get(Provider, provider_id)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    patient = Patient(
+        full_name=payload.full_name.strip(),
+        phone_number=payload.phone_number.strip(),
+        preferred_language=payload.preferred_language,
+        consent_to_call=True,
+    )
+    db.add(patient)
+    db.flush()
+    assignment = CareAssignment(
+        patient_id=patient.id,
+        provider_id=provider.id,
+        relationship_type=payload.relationship_type,
+        active=True,
+    )
+    db.add(assignment)
+    db.commit()
+    db.refresh(assignment)
+    voice = db.scalar(
+        select(ProviderVoice)
+        .where(ProviderVoice.provider_id == provider.id)
+        .order_by(ProviderVoice.is_default.desc(), ProviderVoice.created_at.desc())
+    )
+    return CareRelationshipOut(
+        id=assignment.id,
+        patient_id=patient.id,
+        patient_name=patient.full_name,
+        patient_phone=patient.phone_number,
+        provider_id=provider.id,
+        provider_name=provider.full_name,
+        provider_role=provider.role,
+        relationship_type=assignment.relationship_type,
+        provider_voice_id=voice.id if voice else None,
+        voice_label=voice.label if voice else None,
+        elevenlabs_voice_id=voice.elevenlabs_voice_id if voice else None,
+    )
+
+
+@app.get("/providers/{provider_id}/patients", response_model=list[CareRelationshipOut])
+def list_provider_patients(provider_id: str, db: Session = Depends(get_db)) -> list[CareRelationshipOut]:
+    provider = db.get(Provider, provider_id)
+    if not provider:
+        raise HTTPException(status_code=404, detail="Provider not found")
+    stmt = (
+        select(CareAssignment)
+        .where(CareAssignment.provider_id == provider_id, CareAssignment.active.is_(True))
+        .options(joinedload(CareAssignment.patient), joinedload(CareAssignment.provider).joinedload(Provider.voices))
+        .order_by(CareAssignment.created_at.desc())
+    )
+    assignments = db.execute(stmt).unique().scalars()
+    out: list[CareRelationshipOut] = []
+    for assignment in assignments:
+        default_voice = next((voice for voice in assignment.provider.voices if voice.is_default), None)
+        out.append(
+            CareRelationshipOut(
+                id=assignment.id,
+                patient_id=assignment.patient_id,
+                patient_name=assignment.patient.full_name,
+                patient_phone=assignment.patient.phone_number,
+                provider_id=assignment.provider_id,
+                provider_name=assignment.provider.full_name,
+                provider_role=assignment.provider.role,
+                relationship_type=assignment.relationship_type,
+                provider_voice_id=default_voice.id if default_voice else None,
+                voice_label=default_voice.label if default_voice else None,
+                elevenlabs_voice_id=default_voice.elevenlabs_voice_id if default_voice else None,
+            )
+        )
+    return out
 
 
 @app.get("/care-relationships", response_model=list[CareRelationshipOut])

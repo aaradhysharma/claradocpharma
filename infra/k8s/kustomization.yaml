@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - configmap.yaml
+  - demo-banner.yaml
   - generated-audio-pvc.yaml
   - postgres.yaml
   - redis.yaml

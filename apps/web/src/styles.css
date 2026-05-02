@@ -203,6 +203,101 @@ button.primary {
   color: #b13a3a;
 }
 
+button.small {
+  font-size: 0.8rem;
+  padding: 6px 14px;
+}
+
+.provider-directory {
+  grid-column: span 2;
+}
+
+.provider-row {
+  border-bottom: 1px solid #edf1ee;
+  padding: 6px 0;
+}
+
+.provider-row:last-child {
+  border-bottom: 0;
+}
+
+.provider-header {
+  align-items: center;
+  background: transparent;
+  border-radius: 12px;
+  color: #132018;
+  cursor: pointer;
+  display: flex;
+  font-weight: 700;
+  justify-content: space-between;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.provider-header:hover {
+  background: #f4f8f5;
+}
+
+.provider-header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.provider-header span {
+  font-weight: 500;
+}
+
+.provider-header .chev {
+  background: #e8f1ec;
+  border-radius: 999px;
+  color: #26783f;
+  font-size: 1.2rem;
+  height: 28px;
+  line-height: 26px;
+  text-align: center;
+  width: 28px;
+}
+
+.provider-row.expanded {
+  background: #f9fcfa;
+  border-radius: 14px;
+}
+
+.provider-body {
+  display: grid;
+  gap: 10px;
+  padding: 4px 14px 16px;
+}
+
+.patient-row {
+  align-items: center;
+  background: white;
+  border: 1px solid #e1e8e3;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.patient-row > div {
+  display: grid;
+  gap: 2px;
+}
+
+.add-patient {
+  background: #f0f7f2;
+  border: 1px dashed #b9d9c2;
+  border-radius: 14px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.add-patient input {
+  border: 1px solid #cfdcd3;
+}
+
 .status {
   bottom: 20px;
   left: 28px;
