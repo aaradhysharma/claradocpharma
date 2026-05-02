@@ -45,21 +45,24 @@ jobs:
   # Pushes to Docker Hub. Create repos clara-api, clara-worker, clara-web under your
   # account (or rely on auto-create on first push). Set DOCKERHUB_USERNAME +
   # DOCKERHUB_TOKEN (access token) in repo secrets. Must match infra/k8s/kustomization.yaml images.
+  # Job-level `if` cannot use `secrets` (GitHub restriction). Gate Docker steps below instead.
   build-images:
     needs: validate
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && secrets.DOCKERHUB_TOKEN != '' && secrets.DOCKERHUB_USERNAME != ''
+    if: github.event_name == 'push'
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/login-action@v3
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push images
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
         env:
           NS: ${{ secrets.DOCKERHUB_USERNAME }}
           SHA_TAG: ${{ github.sha }}
