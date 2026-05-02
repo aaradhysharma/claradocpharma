@@ -1,5 +1,7 @@
 # Clara VoiceOps Runbook
 
+For the clean local Kubernetes demo with Argo CD, port cleanup, browser URLs, and presenter talking points, use `docs/argocd-demo.md`.
+
 ## Check Service Health
 
 ```bash
